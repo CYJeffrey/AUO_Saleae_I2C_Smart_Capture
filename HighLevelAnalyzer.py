@@ -49,7 +49,8 @@ class Hla(HighLevelAnalyzer):
 
         print("Settings:", self.my_string_setting,
               self.my_number_setting, self.my_choices_setting)
-        print("Author: Chengyu Chen ")
+        print("Author   : Chengyu Chen ")
+        print("Version  : Ver.00.03 ")
 
     def __del__(self):
         # Close the file when the analyzer is destroyed
