@@ -1,6 +1,6 @@
 {
   "name": "I2C Smart Capture",
-  "apiVersion": "1.0.3",
+  "apiVersion": "1.0.0",
   "author": "Chengyu Chen",
   "version": "0.0.3",
   "description": "Capture the specific I2C data, and result PASS & FAIL",
