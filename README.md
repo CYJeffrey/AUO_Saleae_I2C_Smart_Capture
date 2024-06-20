@@ -11,4 +11,4 @@ Ver.00.02
 5. Enjoy your debugging.
   
 Ver.00.03
-1. Export all i2c command period to total_periods.txt
+1. Export all i2c command period to local path: D:/total_periods.txt
