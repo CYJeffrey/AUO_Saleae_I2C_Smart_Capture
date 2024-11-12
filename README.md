@@ -12,3 +12,6 @@ Ver.00.02
   
 Ver.00.03
 1. Export all i2c command period to local path: D:/total_periods.txt
+
+Ver.00.04
+1. Modify txt file output format.

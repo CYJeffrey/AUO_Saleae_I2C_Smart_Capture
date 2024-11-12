@@ -138,7 +138,7 @@ class Hla(HighLevelAnalyzer):
             end_time = frame.start_time
             period = self.measure(self.start_time, end_time)
             self.repeat_start_mark = False
-            print(dir(period))
+            #print(dir(period))
             if self.i2c_cmdid != None:
                 self.file.write(f'\nCMD {self.i2c_cmdid:#04X} Time {float(period)*1000000} us')
                 self.i2c_cmdid = None
