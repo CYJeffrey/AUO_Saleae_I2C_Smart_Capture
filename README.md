@@ -15,3 +15,6 @@ Ver.00.03
 
 Ver.00.04
 1. Modify txt file output format.
+
+Ver.00.05
+1. Fix create file bug.
