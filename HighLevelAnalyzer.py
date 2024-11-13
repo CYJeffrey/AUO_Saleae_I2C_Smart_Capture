@@ -44,11 +44,13 @@ class Hla(HighLevelAnalyzer):
         self.start_time = None
         self.i2c_cmdid = None
         self.repeat_start_mark = False
-        if not os.path.exists('D:/total_periods.txt'):
-            os.mkdir('D:/total_periods.txt')
-        self.file_path = os.path.expanduser('D:/total_periods.txt')  # Change this to your desired file path
+        #if not os.path.exists(r'D:\total_periods.txt'):
+            #os.mkdir(r'D:\total_periods.txt')
+            
+        self.file_path = os.path.expanduser(r'D:\total_periods.txt')  # Change this to your desired file path
 
         # Open the file in write mode
+        #if not os.path.exists(r'D:\total_periods.txt'):
         self.file = open(self.file_path, 'w')
 
         self.file.write(f'/******************\n')

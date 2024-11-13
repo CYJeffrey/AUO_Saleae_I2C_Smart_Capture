@@ -2,7 +2,7 @@
   "name": "I2C Smart Capture",
   "apiVersion": "1.0.0",
   "author": "Chengyu Chen",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Capture the specific I2C data, and result PASS & FAIL, Output Time period data",
   "extensions": {
     "I2C Smart Capture": {
