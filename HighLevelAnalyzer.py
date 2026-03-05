@@ -55,13 +55,13 @@ class Hla(HighLevelAnalyzer):
 
         self.file.write(f'/******************\n')
         self.file.write(f'*I2C Smart Capture*\n')
-        self.file.write(f'*****Ver.00.04*****\n')
+        self.file.write(f'*****Ver.00.05-1*****\n')
         self.file.write(f'******************/\n')
 
         print("Settings:", self.my_string_setting,
               self.my_number_setting, self.my_choices_setting)
         print("Author   : Chengyu Chen ")
-        print("Version  : Ver.00.04 ")
+        print("Version  : Ver.00.05-1 ")
 
     def __del__(self):
         # Close the file when the analyzer is destroyed

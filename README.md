@@ -18,3 +18,4 @@ Ver.00.04
 
 Ver.00.05
 1. Fix create file bug.
+2. Fix file write issue.
