@@ -88,6 +88,7 @@ class Hla(HighLevelAnalyzer):
         '''
         
         '''Declare Global Variables'''
+        self.file = open(self.file_path, 'a')
         global I2C_Write_Flag
         global I2C_Addr_0x12_Flag
         global bytecount
@@ -271,3 +272,4 @@ class Hla(HighLevelAnalyzer):
                 return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
                     'input_type': str(frame.data['data'])+' = '+str(Dignositic_0x1C_Check)+'@Dia_1C'
                 })
+        self.file.close()
