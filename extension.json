@@ -1,9 +1,9 @@
 {
-  "name": "I2C Smart Capture",
+  "name": "IIC Latency Capture",
   "apiVersion": "1.0.0",
   "author": "Chengyu Chen",
-  "version": "0.0.5",
-  "description": "Capture the specific I2C data, and result PASS & FAIL, Output Time period data",
+  "version": "0.0.6",
+  "description": "Clean the code, remove the old project redundant. Import hi2c for use",
   "extensions": {
     "I2C Smart Capture": {
       "type": "HighLevelAnalyzer",

@@ -30,10 +30,21 @@ class Hla(HighLevelAnalyzer):
         }
     else:
         result_types = {
+            'error': {
+                'format': 'Error!'
+            },
             'DataCapture': {
                 'format': 'Result: {{data.input_type}}'
+            },
+            'StrechCapture': {
+                'format': 'StrechTime: {{data.input_type}}'
+            },
+            "hi2c": {
+                'format': 'address: {{data.address}}; data[{{data.count}}]: [ {{data.data}} ]'
             }
         }
+
+    temp_frame = None
 
     def __init__(self):
         '''
@@ -87,26 +98,16 @@ class Hla(HighLevelAnalyzer):
         The type and data values in `frame` will depend on the input analyzer.
         '''
         
+        if self.temp_frame is None:
+            self.temp_frame = AnalyzerFrame("error", frame.start_time, frame.end_time, {
+                "address": "error",
+                "data": "",
+                "count": 0
+            }
+            )
+
         '''Declare Global Variables'''
         self.file = open(self.file_path, 'a')
-        global I2C_Write_Flag
-        global I2C_Addr_0x12_Flag
-        global bytecount
-        global Dignositic_0x16_Flag
-        global Dignositic_0x1C_Flag
-        global Dignositic_0x16_Shot
-        global Dignositic_0x1C_Shot
-        global Dignositic_0x16_Check
-        global Dignositic_0x1C_Check
-        global Update_Mode
-
-        # if self.start_time is None:
-        #     self.start_time = frame.start_time
-        # else:
-        #     end_time = frame.start_time
-        #     period = self.measure(self.start_time, end_time)
-        #     self.start_time = end_time
-        #     print(f'{period}')
 
         if self.my_choices_setting == 'Update-Mode':
             Update_Mode = 1
@@ -123,19 +124,69 @@ class Hla(HighLevelAnalyzer):
 
         '''When I2C start, Do initial Setting.'''
         if frame.type == 'start':
-            #print('start state')
-            I2C_Write_Flag = 0
-            I2C_Addr_0x12_Flag = 0
-            bytecount = 0
-            Dignositic_0x16_Shot = 0
-            Dignositic_0x1C_Shot = 0
-            Dignositic_0x16_Check = 0
-            Dignositic_0x1C_Check = 0
             #print(Fore.LIGHTBLUE_EX + f'Start+{frame.start_time}')
             if self.repeat_start_mark == False:
                 self.repeat_start_mark = True
                 self.start_time = frame.start_time
-                
+            self.space_time = frame.start_time
+        if Diagnosis_Mode == 1 :
+            if frame.type == "start" or (frame.type == "address" and self.temp_frame.type == "error"):
+                frame_to_flush = None
+                if frame.type == "start" and self.temp_frame.type != "error":
+                    # the previous frame hasn't been flushed yet. Likely a repeated start event.
+                    frame_to_flush = self.temp_frame
+                self.temp_frame = AnalyzerFrame("hi2c", frame.start_time, frame.end_time, {
+                        "address": "",
+                        "data": "",
+                        "count": 0
+                    }
+                )
+
+        if frame.type == 'address':
+            if Diagnosis_Mode == 1 :
+                self.temp_frame.end_time = frame.end_time
+                address_byte = frame.data["address"][0]
+                self.temp_frame.data["address"] = hex(address_byte)
+
+            print(frame.data['ack'])
+            addr = frame.data['address'][0]
+            self.WRcheck = frame.data['read']
+            if self.WRcheck == False:
+                print(f"addr {hex(addr)} W {hex(self.WRcheck)}")
+                self.file.write(f'\nAddr {addr:#04X}')
+                self.file.write(f' W')
+            else:
+                self.file.write(f' R')
+        
+        if frame.type == 'data':
+            if Diagnosis_Mode == 1 :
+                self.temp_frame.end_time = frame.end_time
+                data_byte = frame.data["data"][0]
+                self.temp_frame.data["count"] += 1
+                if len(self.temp_frame.data["data"]) > 0:
+                    self.temp_frame.data["data"] += ", "
+                self.temp_frame.data["data"] += hex(data_byte)
+
+            end_time = frame.start_time
+            period = self.measure(frame.start_time, frame.end_time)
+            period1 = self.measure(self.space_time, frame.start_time)
+            self.space_time = frame.start_time
+            print(period)
+            data = frame.data['data'][0]
+            self.file.write(f' {data:#04X}')
+            if self.i2c_cmdid == None:
+                self.i2c_cmdid = data
+            print(Fore.CYAN + f"Data: {hex(data)}")
+            if Capture_Mode == 1 :
+                if self.WRcheck == True:
+                    return AnalyzerFrame('StrechCapture', frame.start_time, frame.end_time,{
+                                        'input_type': str(float(period)*1000) + 'ms'
+                    })
+                else:
+                    return AnalyzerFrame('StrechCapture', self.start_time, frame.start_time,{
+                                        'input_type': str(float(period1)*1000) + 'ms'
+                    })
+        
         if frame.type == 'stop':
             #print(Fore.LIGHTGREEN_EX + f'End+{frame.end_time}')
             end_time = frame.start_time
@@ -149,127 +200,13 @@ class Hla(HighLevelAnalyzer):
                 self.file.write(f'\nCMD NONE Time {float(period)*1000000} us')
                 self.i2c_cmdid = None
             if Capture_Mode == 1 :
-                return AnalyzerFrame('DataCapture', frame.start_time, frame.end_time, {
+                return AnalyzerFrame('DataCapture', self.space_time, frame.end_time, {
                                     'input_type': str(float(period)*1000) + 'ms'
                 })
-
-        '''Once the target address device detected, set Flag for the next judgement.'''
-        if frame.type == 'address':
-            addr = frame.data['address'][0]
-            WRcheck = frame.data['read']
-            if WRcheck == False:
-                print(f"addr {hex(addr)} W {hex(WRcheck)}")
-                self.file.write(f'\nAddr {addr:#04X}')
-                self.file.write(f' W')
-            else:
-                self.file.write(f' R')
-            if frame.data['read'] == False:
-                # set I2C_Write_Flag
-                I2C_Write_Flag = 1
-                if bytes(frame.data['address']) == b'\x12':
-                    #print('write to ' + str(frame.data['address']))
-                    I2C_Addr_0x12_Flag = 1
-                    Dignositic_0x16_Flag = 0
-                    Dignositic_0x1C_Flag = 0
-                    
-                else :
-                    I2C_Addr_0x12_Flag = 0
-            else :
-                I2C_Write_Flag = 0
-                if bytes(frame.data['address']) == b'\x12':
-                    #print('read from ' + str(frame.data['address']))
-                    I2C_Addr_0x12_Flag = 1
-                else :
-                    I2C_Addr_0x12_Flag = 0
-
-        '''Search for specific diagnositic value (0x16 & 0x1C).'''
-        if frame.type == 'data':
-            #print('data state')
-            data = frame.data['data'][0]
-            self.file.write(f' {data:#04X}')
-            if self.i2c_cmdid == None:
-                self.i2c_cmdid = data
-            # print(Fore.CYAN + f"Data: {hex(data)}")
-            if I2C_Write_Flag == 1:
-                # clean I2C_Write_Flag
-                I2C_Write_Flag = 0
-                if bytes(frame.data['data']) == b'\x16':
-                    Dignositic_0x16_Flag = 1
-                    #print('data 0x16 is captured')
-                if bytes(frame.data['data']) == b'\x1c':
-                    Dignositic_0x1C_Flag = 1
-                    #print('data 0x1C is captured')
-                if I2C_Addr_0x12_Flag == 1:
-                    if Update_Mode == 1:
-                        if bytes(frame.data['data']) == b'\x05':
-                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                                'input_type': str(frame.data['data'])+' = Display ID '
-                            })
-                        if bytes(frame.data['data']) == b'\x20':
-                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                                'input_type': str(frame.data['data'])+' = Dimming CTRL '
-                            })
-                        if bytes(frame.data['data']) == b'\x31':
-                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                                'input_type': str(frame.data['data'])+' = BL Reset '
-                            })
-                        if bytes(frame.data['data']) == b'\x34':
-                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                                'input_type': str(frame.data['data'])+' = BL Key Send '
-                            })
-                        if bytes(frame.data['data']) == b'\x80':
-                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                                'input_type': str(frame.data['data'])+' = BL Status '
-                            })
-                        if bytes(frame.data['data']) == b'\x84':
-                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                                'input_type': str(frame.data['data'])+' = BL Unlock '
-                            })
-                        if bytes(frame.data['data']) == b'\x88':
-                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                                'input_type': str(frame.data['data'])+' = BL Erase '
-                            })
-                        if bytes(frame.data['data']) == b'\x8D':
-                            return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                                'input_type': str(frame.data['data'])+' = BL Write Flash '
-                            })
-            elif I2C_Addr_0x12_Flag == 1:
-                if Dignositic_0x16_Flag == 1:
-                    bytecount = bytecount +1
-                    #print('bytecount =' + str(bytecount))  'Check the byte position is good or not.'
-                    if bytecount == 4:
-                        if bytes(frame.data['data']) != b'\x00' :
-                            print('dignositic 0x16 check = FAIL  ' + str(frame.data['data']))
-                            Dignositic_0x16_Check = 'FAIL'
-                        else:
-                            print('dignositic 0x16 check = PASS  ' + str(frame.data['data']))
-                            Dignositic_0x16_Check = 'PASS'
-
-                        Dignositic_0x16_Shot = 1
-                elif Dignositic_0x1C_Flag == 1:
-                    bytecount = bytecount +1
-                    #print('bytecount =' + str(bytecount))  'Check the byte position is good or not.'
-                    if bytecount == 3:
-                        if bytes(frame.data['data']) != b'\x00' :
-                            print('dignositic 0x1C check = FAIL  ' + str(frame.data['data']))
-                            Dignositic_0x1C_Check = 'FAIL'
-                        else:
-                            print('dignositic 0x1C check = PASS  ' + str(frame.data['data']))
-                            Dignositic_0x1C_Check = 'PASS'
-                        Dignositic_0x1C_Shot = 1
-        '''Check every frame and show RESULT.'''
-        if Dignositic_0x16_Shot == 1:
-            # Clear Flag
-            Dignositic_0x16_Shot = 0
-            # Return the data frame itself
             if Diagnosis_Mode == 1 :
-                return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                    'input_type': str(frame.data['data'])+' = '+str(Dignositic_0x16_Check)+'@Dia_16' + str(frame.start_time - frame.end_time)
-                })
-        elif Dignositic_0x1C_Shot == 1:
-            Dignositic_0x1C_Shot = 0
-            if Diagnosis_Mode == 1 :
-                return AnalyzerFrame('AUO_SGM_30.45', frame.start_time, frame.end_time, {
-                    'input_type': str(frame.data['data'])+' = '+str(Dignositic_0x1C_Check)+'@Dia_1C'
-                })
+                self.temp_frame.end_time = frame.end_time
+                new_frame = self.temp_frame
+                self.temp_frame = None
+                return new_frame
+
         self.file.close()
